@@ -37,7 +37,7 @@
             player.addEventListener(mediaPlayer.eventName.timeupdate, handleTimeUpdate);
 
             // handle bitrate changes
-            player.addEventListener(mediaPlayer.eventName.downloadbitratechanged, handleBitrateChanges)
+            player.addEventListener(mediaPlayer.eventName.playbackbitratechanged, handleBitrateChanges)
 
             // handle audio download failure, only logged on the console.
             if (player.audioBufferData()) {
