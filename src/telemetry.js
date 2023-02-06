@@ -33,8 +33,10 @@
         }
 
         function handleLoadedMetaData() {
-            // send metrics while playing video
-            player.addEventListener(mediaPlayer.eventName.timeupdate, handleTimeUpdate);
+            // handle video buffering
+            player.addEventListener(mediaPlayer.eventName.waiting, handleBufferEventStart);
+            player.addEventListener(mediaPlayer.eventName.resume, handleBufferEventEnd);
+
 
             // handle bitrate changes
             player.addEventListener(mediaPlayer.eventName.playbackbitratechanged, handleBitrateChanges)
@@ -61,6 +63,10 @@
                 player.videoBufferData().addEventListener(mediaPlayer.bufferDataEventName.downloadfailed, function () {
 
                     var data = {
+                        videoFrameSize : player.videoWidth() * player.videoHeight(),
+                        videoBitrate: player.currentPlaybackBitrate(),
+                        bufferingEventsNumber: player.buffered(),
+                        bufferingStateTime: player.videoBufferData(),
                         sessionId: player.currentSrc(),
                         currentTime: player.currentTime(),
                         bufferLevel: player.videoBufferData().bufferLevel,
@@ -69,7 +75,7 @@
                         message: player.videoBufferData().downloadFailed
                     };
 
-                    // sendData("download-failed", data);
+                    sendData("download-failed", data);
                 });
             }
 
@@ -77,28 +83,34 @@
         function handleBitrateChanges(event) {
             var metrics = {
                 videoBitrate: player.currentPlaybackBitrate(),
-                currentTime: player.currentTime(),
+                currentTime: window.Date.now(),
 
             }
             sendData("bitrate-switch", metrics);
         }
-        function handleTimeUpdate(event) {
-            var metrics = {
-                videoFrameSize : player.videoWidth() * player.videoHeight(),
-                videoBitrate: player.currentPlaybackBitrate(),
-                bufferingEventsNumber: player.buffered().length,
-                bufferingStateTime: player.videoBufferData().bufferLevel,
+        function handleBufferEventStart(event) {
+            var bufferStartTime = window.Date.now();
+            var bufferEvent = {startTime:bufferStartTime, endTime: null}
+            window.sessionStorage.setItem("bufferEvent", JSON.stringify(bufferEvent));
+        }
+
+        function handleBufferEventEnd(event) {
+            var bufferEvent = JSON.parse(sessionStorage.getItem('bufferEvent'));
+            if(bufferEvent){
+                bufferEvent.endTime = window.Date.now();
+                sendData("buffer-event", bufferEvent);
+                sessionStorage.removeItem("bufferEvent");
             }
-            sendData("metric", metrics);
         }
 
         function sendData(eventId, data) {
-            var eventLog = {
+            data.videoFrameSize = player.videoWidth() * player.videoHeight();
+            var metric = {
                 id : sessionId,
                 eventId: eventId,
                 data: data
             };
-            callback(eventLog);
+            callback(metric);
         }
     });
 }(window.amp));
